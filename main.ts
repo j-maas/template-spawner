@@ -8,6 +8,7 @@ import {
 	SuggestModal,
 	moment,
 	TFile,
+	FrontMatterCache,
 } from "obsidian";
 
 interface TemplateSpawnerSettings {
@@ -24,6 +25,7 @@ export default class TemplateSpawnerPlugin extends Plugin {
 	settings: TemplateSpawnerSettings;
 
 	readonly destinationFolderKey = "spawn-destination";
+	readonly destinationNameKey = "spawn-name";
 
 	async onload() {
 		await this.loadSettings();
@@ -87,6 +89,20 @@ export default class TemplateSpawnerPlugin extends Plugin {
 	async getDestinationPath(template: TFile): Promise<string[]> {
 		const templateFrontmatter =
 			this.app.metadataCache.getFileCache(template)?.frontmatter;
+		const destinationFolderPath =
+			this.getDestinationFolderPath(templateFrontmatter);
+		const destinationBasename =
+			this.getDestinationBasename(templateFrontmatter);
+
+		const destinationPath = destinationFolderPath;
+		destinationPath.push(destinationBasename + ".md");
+
+		return destinationPath;
+	}
+
+	getDestinationFolderPath(
+		templateFrontmatter: FrontMatterCache | undefined,
+	): string[] {
 		const frontmatterDestinationFolder: string | null =
 			parseFrontMatterEntry(
 				templateFrontmatter,
@@ -99,12 +115,38 @@ export default class TemplateSpawnerPlugin extends Plugin {
 						.filter((part) => part.trim().length !== 0)
 				: [];
 
-		const currentDate = moment().format("YYYY-MM-DD");
-		const destinationName = `${currentDate}.md`;
-		const destinationPath = destinationFolderPath;
-		destinationPath.push(destinationName);
+		return destinationFolderPath;
+	}
 
-		return destinationPath;
+	getDestinationBasename(
+		templateFrontmatter: FrontMatterCache | undefined,
+	): string {
+		const frontmatterBasename: string | null = parseFrontMatterEntry(
+			templateFrontmatter,
+			this.destinationNameKey,
+		);
+
+		let destinationBasename = this.getDefaultDestinationName();
+		if (frontmatterBasename !== null) {
+			const currentDate = moment();
+			destinationBasename = frontmatterBasename.replace(
+				/\{\{date(?::(.+))?}}/g,
+				(match, formatMatch) => {
+					let format = "YYYY-MM-DD";
+					if (formatMatch !== undefined) {
+						format = formatMatch;
+					}
+					return currentDate.format(format);
+				},
+			);
+		}
+
+		return destinationBasename + ".md";
+	}
+
+	getDefaultDestinationName() {
+		const currentDate = moment().format("YYYY-MM-DD");
+		return `${currentDate}.md`;
 	}
 
 	async removeTemplateFrontmatterFields(newFile: TFile) {
