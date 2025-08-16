@@ -14,13 +14,11 @@ import {
 interface TemplateSpawnerSettings {
 	templateFolder: string;
 	afterCreation: "nothing" | "openInActive" | "openInNew";
-	defaultBasename: string;
 }
 
 const DEFAULT_SETTINGS: TemplateSpawnerSettings = {
 	templateFolder: "templates",
 	afterCreation: "openInNew",
-	defaultBasename: "{{date}}",
 };
 
 export default class TemplateSpawnerPlugin extends Plugin {
@@ -104,7 +102,7 @@ export default class TemplateSpawnerPlugin extends Plugin {
 		const templateFrontmatter =
 			this.app.metadataCache.getFileCache(template)?.frontmatter;
 		const folder = this.getDestinationFolderPath(templateFrontmatter);
-		const basename = this.getDestinationBasename(templateFrontmatter);
+		const basename = this.getDestinationBasename(templateFrontmatter, template.basename);
 
 		return { folder, basename };
 	}
@@ -129,13 +127,14 @@ export default class TemplateSpawnerPlugin extends Plugin {
 
 	getDestinationBasename(
 		templateFrontmatter: FrontMatterCache | undefined,
+		templateBasename: string
 	): string {
 		const frontmatterBasename: string | null = parseFrontMatterEntry(
 			templateFrontmatter,
 			TemplateSpawnerPlugin.destinationNameKey,
 		);
 
-		let destinationBasename = this.settings.defaultBasename
+		let destinationBasename = templateBasename
 		if (frontmatterBasename !== null) {
 			destinationBasename = frontmatterBasename
 		}
@@ -301,18 +300,6 @@ class TemplateSpawnerSettingTab extends PluginSettingTab {
 						this.plugin.settings.afterCreation = value as any;
 						await this.plugin.saveSettings();
 					})
-			);
-
-		new Setting(containerEl)
-			.setName("Default name")
-			.setDesc(`If no '${TemplateSpawnerPlugin.destinationNameKey}' is set in the template's frontmatter, this pattern will be used for the new file. Leave out the file extension (it will always be an '.md' file).`)
-			.addText(text =>
-				text
-					.setValue(this.plugin.settings.defaultBasename)
-					.onChange(async (value) => {
-						this.plugin.settings.defaultBasename = value;
-						await this.plugin.saveSettings();
-					}),
 			);
 	}
 }
