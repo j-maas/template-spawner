@@ -14,18 +14,20 @@ import {
 interface TemplateSpawnerSettings {
 	templateFolder: string;
 	openInNewTab: boolean;
+	defaultBasename: string;
 }
 
 const DEFAULT_SETTINGS: TemplateSpawnerSettings = {
 	templateFolder: "templates",
 	openInNewTab: true,
+	defaultBasename: "{{date}}",
 };
 
 export default class TemplateSpawnerPlugin extends Plugin {
 	settings: TemplateSpawnerSettings;
 
-	readonly destinationFolderKey = "spawn-destination";
-	readonly destinationNameKey = "spawn-name";
+	static readonly destinationFolderKey = "spawn-folder";
+	static readonly destinationNameKey = "spawn-name";
 
 	async onload() {
 		await this.loadSettings();
@@ -55,7 +57,7 @@ export default class TemplateSpawnerPlugin extends Plugin {
 		this.addSettingTab(new TemplateSpawnerSettingTab(this.app, this));
 	}
 
-	onunload() {}
+	onunload() { }
 
 	async loadSettings() {
 		this.settings = Object.assign(
@@ -74,11 +76,13 @@ export default class TemplateSpawnerPlugin extends Plugin {
 	}
 
 	async createNewFromTemplate(template: TFile) {
-		const destinationPath = await this.getDestinationPath(template);
+		const destination = await this.getDestination(template);
 		const templateContent = await this.app.vault.read(template);
 
-		const newFile = await this.app.vault.create(
-			destinationPath.join("/"),
+		const newFile = await this.createFile(
+			destination.folder,
+			destination.basename,
+			".md",
 			templateContent,
 		);
 		await this.removeTemplateFrontmatterFields(newFile);
@@ -86,18 +90,15 @@ export default class TemplateSpawnerPlugin extends Plugin {
 		await this.openNewFile(newFile);
 	}
 
-	async getDestinationPath(template: TFile): Promise<string[]> {
+	async getDestination(
+		template: TFile,
+	): Promise<{ folder: string[]; basename: string }> {
 		const templateFrontmatter =
 			this.app.metadataCache.getFileCache(template)?.frontmatter;
-		const destinationFolderPath =
-			this.getDestinationFolderPath(templateFrontmatter);
-		const destinationBasename =
-			this.getDestinationBasename(templateFrontmatter);
+		const folder = this.getDestinationFolderPath(templateFrontmatter);
+		const basename = this.getDestinationBasename(templateFrontmatter);
 
-		const destinationPath = destinationFolderPath;
-		destinationPath.push(destinationBasename + ".md");
-
-		return destinationPath;
+		return { folder, basename };
 	}
 
 	getDestinationFolderPath(
@@ -106,13 +107,13 @@ export default class TemplateSpawnerPlugin extends Plugin {
 		const frontmatterDestinationFolder: string | null =
 			parseFrontMatterEntry(
 				templateFrontmatter,
-				this.destinationFolderKey,
+				TemplateSpawnerPlugin.destinationFolderKey,
 			);
 		const destinationFolderPath =
 			frontmatterDestinationFolder !== null
 				? frontmatterDestinationFolder
-						.split("/")
-						.filter((part) => part.trim().length !== 0)
+					.split("/")
+					.filter((part) => part.trim().length !== 0)
 				: [];
 
 		return destinationFolderPath;
@@ -123,37 +124,90 @@ export default class TemplateSpawnerPlugin extends Plugin {
 	): string {
 		const frontmatterBasename: string | null = parseFrontMatterEntry(
 			templateFrontmatter,
-			this.destinationNameKey,
+			TemplateSpawnerPlugin.destinationNameKey,
 		);
 
-		let destinationBasename = this.getDefaultDestinationName();
+		let destinationBasename = this.settings.defaultBasename
 		if (frontmatterBasename !== null) {
-			const currentDate = moment();
-			destinationBasename = frontmatterBasename.replace(
-				/\{\{date(?::(.+))?}}/g,
-				(match, formatMatch) => {
-					let format = "YYYY-MM-DD";
-					if (formatMatch !== undefined) {
-						format = formatMatch;
-					}
-					return currentDate.format(format);
-				},
-			);
+			destinationBasename = frontmatterBasename
 		}
 
-		return destinationBasename + ".md";
+		const currentDate = moment();
+		destinationBasename = destinationBasename.replace(
+			/\{\{date(?::(.+))?}}/g,
+			(match, formatMatch) => {
+				let format = "YYYY-MM-DD";
+				if (formatMatch !== undefined) {
+					format = formatMatch;
+				}
+				return currentDate.format(format);
+			},
+		);
+
+		return destinationBasename;
 	}
 
-	getDefaultDestinationName() {
-		const currentDate = moment().format("YYYY-MM-DD");
-		return `${currentDate}.md`;
+	async createFile(
+		folder: string[],
+		basename: string,
+		extension: string,
+		content: string,
+	): Promise<TFile> {
+		const maxTries = 100;
+		let triesLeft = maxTries;
+		while (triesLeft > 0) {
+			const path = [...folder, basename + extension];
+
+			const result = await this.tryCreatingFile(path, content);
+			if (result !== null) {
+				return result;
+			}
+
+			basename = this.incrementBasename(basename)
+
+			triesLeft -= 1;
+		}
+		const errorMessage = `There are too many existing files with confliting names. Abandoned after ${maxTries} tries, last try was: ${folder.join("/")}/${basename}`
+		new Notice(errorMessage)
+		throw new Error(errorMessage)
+	}
+
+	async tryCreatingFile(
+		path: string[],
+		content: string,
+	): Promise<TFile | null> {
+		try {
+			return await this.app.vault.create(path.join("/"), content);
+		} catch (e) {
+			if (e instanceof Error) {
+				return null;
+			} else {
+				throw e;
+			}
+		}
+	}
+
+	incrementBasename(basename: string): string {
+		const match = /(.*\s+)(\d+)$/.exec(basename);
+
+		if (match !== null) {
+			const numberMatch = match[2];
+			const previousNumber = parseInt(numberMatch);
+
+			const newNumber = previousNumber + 1;
+			const prefix = match[1];
+			return prefix + newNumber;
+		} else {
+			return basename.trimEnd() + " 2"
+		}
 	}
 
 	async removeTemplateFrontmatterFields(newFile: TFile) {
 		await this.app.fileManager.processFrontMatter(
 			newFile,
 			(frontmatter) => {
-				delete frontmatter[this.destinationFolderKey];
+				delete frontmatter[TemplateSpawnerPlugin.destinationFolderKey];
+				delete frontmatter[TemplateSpawnerPlugin.destinationNameKey]
 			},
 		);
 	}
@@ -234,6 +288,16 @@ class TemplateSpawnerSettingTab extends PluginSettingTab {
 					}),
 			);
 
-		new Setting(containerEl).setName("Default name");
+		new Setting(containerEl)
+			.setName("Default name")
+			.setDesc(`If no '${TemplateSpawnerPlugin.destinationNameKey}' is set in the template's frontmatter, this pattern will be used for the new file. Leave out the file extension (it will always be an '.md' file).`)
+			.addText(text =>
+				text
+					.setValue(this.plugin.settings.defaultBasename)
+					.onChange(async (value) => {
+						this.plugin.settings.defaultBasename = value;
+						await this.plugin.saveSettings();
+					}),
+			);
 	}
 }
