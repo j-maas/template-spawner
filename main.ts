@@ -9,6 +9,7 @@ import {
 	moment,
 	TFile,
 	FrontMatterCache,
+	normalizePath,
 } from "obsidian";
 
 interface TemplateSpawnerSettings {
@@ -60,15 +61,15 @@ export default class TemplateSpawnerPlugin extends Plugin {
 	}
 
 	startCreation() {
-		const templateFolder = this.app.vault.getFolderByPath(
-			this.settings.templateFolder,
-		);
+		const safeTemplateFolderPath = normalizePath(this.settings.templateFolder)
+		const templateFolder = this.app.vault.getFolderByPath(safeTemplateFolderPath);
 		if (templateFolder === null) {
 			new Notice(
-				`Could not find the template folder at ${this.settings.templateFolder}. Please update the settings.`,
+				`Could not find the template folder at ${safeTemplateFolderPath}. Please update the settings.`,
 			);
 			return;
 		}
+
 		const allTemplates = templateFolder.children.filter(
 			(entry): entry is TFile => entry instanceof TFile,
 		);
@@ -164,8 +165,8 @@ export default class TemplateSpawnerPlugin extends Plugin {
 		let triesLeft = maxTries;
 		while (triesLeft > 0) {
 			const path = [...folder, basename + extension];
-
 			const result = await this.tryCreatingFile(path, content);
+
 			if (result instanceof TFile) {
 				return result;
 			} else {
@@ -190,7 +191,7 @@ export default class TemplateSpawnerPlugin extends Plugin {
 		content: string,
 	): Promise<TFile | Error> {
 		try {
-			return await this.app.vault.create(path.join("/"), content);
+			return await this.app.vault.create(this.normalizePath(path), content);
 		} catch (e) {
 			if (e instanceof Error) {
 				return e;
@@ -233,6 +234,10 @@ export default class TemplateSpawnerPlugin extends Plugin {
 		const leafType = this.settings.afterCreation === "openInNew" ? "tab" : false;
 		const leaf = this.app.workspace.getLeaf(leafType);
 		await leaf.openFile(newFile);
+	}
+
+	normalizePath(path: string[]): string {
+		return normalizePath(path.join("/"))
 	}
 }
 
