@@ -34,25 +34,15 @@ export default class TemplateSpawnerPlugin extends Plugin {
 
 		this.addCommand({
 			id: "create-from-template",
-			name: "New from template",
+			name: "Create new note from template",
 			callback: () => {
-				const templateFolder = this.app.vault.getFolderByPath(
-					this.settings.templateFolder,
-				);
-				if (templateFolder === null) {
-					new Notice(
-						`Could not find the template folder at ${this.settings.templateFolder}. Please update the settings.`,
-					);
-					return;
-				}
-				const allTemplates = templateFolder.children.filter(
-					(entry): entry is TFile => entry instanceof TFile,
-				);
-				new TemplateChooserModal(this.app, allTemplates, (template) =>
-					this.onTemplateSelected(template),
-				).open();
+				this.startCreation();
 			},
 		});
+
+		this.addRibbonIcon('list-plus', "Create new note from template", () => {
+			this.startCreation();
+		})
 
 		this.addSettingTab(new TemplateSpawnerSettingTab(this.app, this));
 	}
@@ -69,6 +59,24 @@ export default class TemplateSpawnerPlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
+	}
+
+	startCreation() {
+		const templateFolder = this.app.vault.getFolderByPath(
+			this.settings.templateFolder,
+		);
+		if (templateFolder === null) {
+			new Notice(
+				`Could not find the template folder at ${this.settings.templateFolder}. Please update the settings.`,
+			);
+			return;
+		}
+		const allTemplates = templateFolder.children.filter(
+			(entry): entry is TFile => entry instanceof TFile,
+		);
+		new TemplateChooserModal(this.app, allTemplates, (template) =>
+			this.onTemplateSelected(template),
+		).open();
 	}
 
 	async onTemplateSelected(template: TFile) {
