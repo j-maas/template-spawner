@@ -1,94 +1,120 @@
-# Obsidian Sample Plugin
+# Template spawner
 
-This is a sample plugin for Obsidian (https://obsidian.md).
+Create a new [Obsidian]() note from a template that defines the folder and name of the new note.
 
-This project uses TypeScript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in TypeScript Definition format, which contains TSDoc comments describing what it does.
+## What is the problem?
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open Sample Modal" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and output 'click' to the console.
-- Registers a global interval which logs 'setInterval' to the console.
+I have different templates that should be created in different folders. For example, my literature notes should be created in my `literature` folder.
 
-## First time developing plugins?
+This plugin allows you to create a new file based on a template. The template can specify where the file should be created and what the name should be.
 
-Quick starting guide for new plugin devs:
+Why a new plugin? The existing plugins either do not allow to create a note in a specific folder (like the core [Templates](https://help.obsidian.md/plugins/templates) plugin), are much more complex than I need and slow down loading on mobile (like [QuickAdd](https://github.com/chhoumann/quickadd)), or are outdated and incompatible with mobile (like [metatemplates](https://github.com/avirut/obsidian-metatemplates)).
 
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `main.ts` to `main.js`.
-- Make changes to `main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
+## Getting started
 
-## Releasing new releases
+1. [Install](https://help.obsidian.md/community-plugins) the plugin.
+2. In the plugin settings, specify what folder your templates are in. Your templates are normal notes which will be copied, similar to the core Templates plugin.
+3. Use the ribbon icon or the "Create new note from template" command to start creating a new note.
+4. Choose the template to use.
+5. The new note will open in new tab. (You can change this in the settings.)
 
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
+## Examples
 
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
+### Default settings
 
-## Adding your plugin to the community plugin list
+Template at `templates/recipe.md`:
 
-- Check the [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines).
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
+```
+## Ingredients
 
-## How to use
+## Steps
 
-- Clone this repo.
-- Make sure your NodeJS is at least v16 (`node --version`).
-- `npm i` or `yarn` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
-
-## Manually installing the plugin
-
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
-
-## Improve code quality with eslint (optional)
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code. 
-- To use eslint with this project, make sure to install eslint from terminal:
-  - `npm install -g eslint`
-- To use eslint to analyze this project use this command:
-  - `eslint main.ts`
-  - eslint will then create a report with suggestions for code improvement by file and line number.
-- If your source code is in a folder, such as `src`, you can use eslint with this command to analyze all files in that folder:
-  - `eslint .\src\`
-
-## Funding URL
-
-You can include funding URLs where people who use your plugin can financially support it.
-
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
-
-```json
-{
-    "fundingUrl": "https://buymeacoffee.com"
-}
 ```
 
-If you have multiple URLs, you can also do:
+Creates note at `recipe.md`:
 
-```json
-{
-    "fundingUrl": {
-        "Buy Me a Coffee": "https://buymeacoffee.com",
-        "GitHub Sponsor": "https://github.com/sponsors",
-        "Patreon": "https://www.patreon.com/"
-    }
-}
+```
+## Ingredients
+
+## Steps
+
 ```
 
-## API Documentation
+### Custom folder
 
-See https://github.com/obsidianmd/obsidian-api
+Template at `templates/literature.md`:
+
+```
+---
+spawn-folder: literature/
+title: 
+authors: 
+---
+
+## Notes
+
+
+```
+
+Creates note at `literature/literature.md`:
+
+```
+---
+title: 
+authors: 
+---
+
+## Notes
+
+
+```
+
+### Custom folder and name
+
+Template at `templates/dailyNote.md`:
+
+```
+---
+spawn-folder: dailyNotes/
+spawn-name: Day {{date}}
+---
+
+## Todos
+
+## Thoughts
+
+
+```
+
+Creates note at `dailyNotes/Day 2025-08-16.md`:
+
+```
+## Todos
+
+## Thoughts
+
+```
+
+
+## Set the folder
+
+By default, notes are created at the root of your vault.
+
+To specify the folder where the new note should be created, add the `spawn-folder` field to the frontmatter of the template. This field will be removed in the created note.
+
+## Set the name
+
+By default, the name of the template is used as the name of the new note.
+
+To set a different name, add the `spawn-name` field to the frontmatter of the template. This field will be removed in the created note.
+
+You can use `{{date}}` to insert the current date. By default, it uses the format `YYYY-MM-DD` (e.g. `2025-08-16`). To specify a custom [Moment.js format](https://momentjs.com/docs/#/displaying/format/), use `{{date:<your-format>}}`, e.g. `{{date:MMMM Do YYYY}}` for `August 16th 2025`. Beware that you cannot have `:` in file names.
+
+### Naming conflicts
+
+If you create a new note and there is already a note with the same name, the plugin will rename the new note as follows:
+
+- If the note's name ends with a whole number with a space before it, it will increase that number. Example: If `Day 1.md` and `Day 2.md` exist, it will create the new note at `Day 3.md`.
+- Otherwise it will add a number to the name, starting at two. Example: If `2025-08-16.md` exists, it will create `2025-08-16 2.md`. (There is no space before `16`, so the previous rule does not apply.)
+
+This allows you to choose whether you would like to always have a number (`Day 1.md`, `Day 2.md`, `Day 3.md`, ...) or only when necessary (`Note.md`, `Note 2.md`, `Note 3.md`, ...).
