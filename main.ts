@@ -1,23 +1,29 @@
 import {
 	App,
 	Notice,
+	parseFrontMatterEntry,
 	Plugin,
 	PluginSettingTab,
 	Setting,
 	SuggestModal,
+	moment,
 	TFile,
 } from "obsidian";
 
 interface TemplateSpawnerSettings {
 	templateFolder: string;
+	openInNewTab: boolean;
 }
 
 const DEFAULT_SETTINGS: TemplateSpawnerSettings = {
 	templateFolder: "templates",
+	openInNewTab: true,
 };
 
 export default class TemplateSpawnerPlugin extends Plugin {
 	settings: TemplateSpawnerSettings;
+
+	readonly destinationFolderKey = "spawn-destination";
 
 	async onload() {
 		await this.loadSettings();
@@ -38,7 +44,9 @@ export default class TemplateSpawnerPlugin extends Plugin {
 				const allTemplates = templateFolder.children.filter(
 					(entry): entry is TFile => entry instanceof TFile,
 				);
-				new TemplateChooserModal(this.app, allTemplates).open();
+				new TemplateChooserModal(this.app, allTemplates, (template) =>
+					this.onTemplateSelected(template),
+				).open();
 			},
 		});
 
@@ -58,12 +66,68 @@ export default class TemplateSpawnerPlugin extends Plugin {
 	async saveSettings() {
 		await this.saveData(this.settings);
 	}
+
+	async onTemplateSelected(template: TFile) {
+		return this.createNewFromTemplate(template);
+	}
+
+	async createNewFromTemplate(template: TFile) {
+		const destinationPath = await this.getDestinationPath(template);
+		const templateContent = await this.app.vault.read(template);
+
+		const newFile = await this.app.vault.create(
+			destinationPath.join("/"),
+			templateContent,
+		);
+		await this.removeTemplateFrontmatterFields(newFile);
+
+		await this.openNewFile(newFile);
+	}
+
+	async getDestinationPath(template: TFile): Promise<string[]> {
+		const templateFrontmatter =
+			this.app.metadataCache.getFileCache(template)?.frontmatter;
+		const frontmatterDestinationFolder: string | null =
+			parseFrontMatterEntry(
+				templateFrontmatter,
+				this.destinationFolderKey,
+			);
+		const destinationFolderPath =
+			frontmatterDestinationFolder !== null
+				? frontmatterDestinationFolder
+						.split("/")
+						.filter((part) => part.trim().length !== 0)
+				: [];
+
+		const currentDate = moment().format("YYYY-MM-DD");
+		const destinationName = `${currentDate}.md`;
+		const destinationPath = destinationFolderPath;
+		destinationPath.push(destinationName);
+
+		return destinationPath;
+	}
+
+	async removeTemplateFrontmatterFields(newFile: TFile) {
+		await this.app.fileManager.processFrontMatter(
+			newFile,
+			(frontmatter) => {
+				delete frontmatter[this.destinationFolderKey];
+			},
+		);
+	}
+
+	async openNewFile(newFile: TFile) {
+		const leafType = this.settings.openInNewTab ? "tab" : false;
+		const leaf = this.app.workspace.getLeaf(leafType);
+		await leaf.openFile(newFile);
+	}
 }
 
 export class TemplateChooserModal extends SuggestModal<TFile> {
 	constructor(
 		app: App,
 		private allTemplates: TFile[],
+		private onSelected: (template: TFile) => void,
 	) {
 		super(app);
 	}
@@ -85,7 +149,7 @@ export class TemplateChooserModal extends SuggestModal<TFile> {
 
 	// Perform action on the selected suggestion.
 	onChooseSuggestion(template: TFile, evt: MouseEvent | KeyboardEvent) {
-		new Notice(`Selected ${template.basename}`);
+		this.onSelected(template);
 	}
 }
 
@@ -105,7 +169,7 @@ class TemplateSpawnerSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("Template folder")
 			.setDesc("Path to the folder containing your templates.")
-			.addTextArea((text) =>
+			.addText((text) =>
 				text
 					.setValue(this.plugin.settings.templateFolder)
 					.onChange(async (value) => {
@@ -113,5 +177,21 @@ class TemplateSpawnerSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					}),
 			);
+
+		new Setting(containerEl)
+			.setName("Open in new tab")
+			.setDesc(
+				"If active, will open the note in a new tab after creating it from a template.",
+			)
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.openInNewTab)
+					.onChange(async (value) => {
+						this.plugin.settings.openInNewTab = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl).setName("Default name");
 	}
 }
