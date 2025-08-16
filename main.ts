@@ -13,13 +13,13 @@ import {
 
 interface TemplateSpawnerSettings {
 	templateFolder: string;
-	openInNewTab: boolean;
+	afterCreation: "nothing" | "openInActive" | "openInNew";
 	defaultBasename: string;
 }
 
 const DEFAULT_SETTINGS: TemplateSpawnerSettings = {
 	templateFolder: "templates",
-	openInNewTab: true,
+	afterCreation: "openInNew",
 	defaultBasename: "{{date}}",
 };
 
@@ -95,7 +95,7 @@ export default class TemplateSpawnerPlugin extends Plugin {
 		);
 		await this.removeTemplateFrontmatterFields(newFile);
 
-		await this.openNewFile(newFile);
+		await this.afterCreation(newFile);
 	}
 
 	async getDestination(
@@ -220,8 +220,13 @@ export default class TemplateSpawnerPlugin extends Plugin {
 		);
 	}
 
-	async openNewFile(newFile: TFile) {
-		const leafType = this.settings.openInNewTab ? "tab" : false;
+	async afterCreation(newFile: TFile) {
+		if (this.settings.afterCreation === "nothing") {
+			new Notice(`Created '${newFile.path}'.`)
+			return
+		}
+
+		const leafType = this.settings.afterCreation === "openInNew" ? "tab" : false;
 		const leaf = this.app.workspace.getLeaf(leafType);
 		await leaf.openFile(newFile);
 	}
@@ -283,17 +288,19 @@ class TemplateSpawnerSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-			.setName("Open in new tab")
-			.setDesc(
-				"If active, will open the note in a new tab after creating it from a template.",
-			)
-			.addToggle((toggle) =>
-				toggle
-					.setValue(this.plugin.settings.openInNewTab)
+			.setName('After creation')
+			.setDesc('Choose what to do with new notes after they were created.')
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOption('openInNew', 'Open in new tab')
+					.addOption('openInActive', 'Open in active editor')
+					.addOption('nothing', "Don't open, only notify")
+					.setValue(this.plugin.settings.afterCreation)
 					.onChange(async (value) => {
-						this.plugin.settings.openInNewTab = value;
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						this.plugin.settings.afterCreation = value as any;
 						await this.plugin.saveSettings();
-					}),
+					})
 			);
 
 		new Setting(containerEl)
