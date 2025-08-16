@@ -1,4 +1,12 @@
-import { App, Plugin, PluginSettingTab, Setting } from "obsidian";
+import {
+	App,
+	Notice,
+	Plugin,
+	PluginSettingTab,
+	Setting,
+	SuggestModal,
+	TFile,
+} from "obsidian";
 
 interface TemplateSpawnerSettings {
 	templateFolder: string;
@@ -15,10 +23,22 @@ export default class TemplateSpawnerPlugin extends Plugin {
 		await this.loadSettings();
 
 		this.addCommand({
-			id: "creat-from-template",
+			id: "create-from-template",
 			name: "New from template",
 			callback: () => {
-				// TODO
+				const templateFolder = this.app.vault.getFolderByPath(
+					this.settings.templateFolder,
+				);
+				if (templateFolder === null) {
+					new Notice(
+						`Could not find the template folder at ${this.settings.templateFolder}. Please update the settings.`,
+					);
+					return;
+				}
+				const allTemplates = templateFolder.children.filter(
+					(entry): entry is TFile => entry instanceof TFile,
+				);
+				new TemplateChooserModal(this.app, allTemplates).open();
 			},
 		});
 
@@ -37,6 +57,35 @@ export default class TemplateSpawnerPlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
+	}
+}
+
+export class TemplateChooserModal extends SuggestModal<TFile> {
+	constructor(
+		app: App,
+		private allTemplates: TFile[],
+	) {
+		super(app);
+	}
+
+	// Returns all available suggestions.
+	getSuggestions(query: string): TFile[] {
+		return this.allTemplates.filter((template) =>
+			template.basename
+				.toLocaleLowerCase()
+				.includes(query.toLocaleLowerCase()),
+		);
+	}
+
+	// Renders each suggestion item.
+	renderSuggestion(template: TFile, el: HTMLElement) {
+		el.createEl("div", { text: template.basename });
+		el.createEl("small", { text: template.path });
+	}
+
+	// Perform action on the selected suggestion.
+	onChooseSuggestion(template: TFile, evt: MouseEvent | KeyboardEvent) {
+		new Notice(`Selected ${template.basename}`);
 	}
 }
 
