@@ -166,8 +166,14 @@ export default class TemplateSpawnerPlugin extends Plugin {
 			const path = [...folder, basename + extension];
 
 			const result = await this.tryCreatingFile(path, content);
-			if (result !== null) {
+			if (result instanceof TFile) {
 				return result;
+			} else {
+				if (result.message.includes("File name cannot contain any of the following characters")) {
+					const errorMessage = `The file name '${basename}' is invalid: ${result.message}`
+					new Notice(errorMessage)
+					throw new Error(errorMessage)
+				}
 			}
 
 			basename = this.incrementBasename(basename)
@@ -182,15 +188,14 @@ export default class TemplateSpawnerPlugin extends Plugin {
 	async tryCreatingFile(
 		path: string[],
 		content: string,
-	): Promise<TFile | null> {
+	): Promise<TFile | Error> {
 		try {
 			return await this.app.vault.create(path.join("/"), content);
 		} catch (e) {
 			if (e instanceof Error) {
-				return null;
-			} else {
-				throw e;
+				return e;
 			}
+			throw e;
 		}
 	}
 
