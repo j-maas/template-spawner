@@ -14,8 +14,10 @@ import {
 
 interface TemplateSpawnerSettings {
 	templateFolder: string;
-	afterCreation: "nothing" | "openInActive" | "openInNew";
+	afterCreation: AfterCreationOptions;
 }
+
+type AfterCreationOptions = "nothing" | "openInActive" | "openInNew";
 
 const DEFAULT_SETTINGS: TemplateSpawnerSettings = {
 	templateFolder: "templates",
@@ -323,8 +325,8 @@ class TemplateSpawnerSettingTab extends PluginSettingTab {
 					.addOption("nothing", "Don't open, only notify")
 					.setValue(this.plugin.settings.afterCreation)
 					.onChange(async (value) => {
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						this.plugin.settings.afterCreation = value as any;
+						this.plugin.settings.afterCreation =
+							value as AfterCreationOptions;
 						await this.plugin.saveSettings();
 					}),
 			);
