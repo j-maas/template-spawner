@@ -1,7 +1,7 @@
 {
 	"id": "template-spawner",
 	"name": "Template spawner",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"minAppVersion": "0.15.0",
 	"description": "Create a new note from a template",
 	"author": "j-maas",
