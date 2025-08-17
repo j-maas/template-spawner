@@ -47,8 +47,8 @@ Template at `templates/literature.md`:
 ```
 ---
 spawn-folder: literature/
-title: 
-authors: 
+title:
+authors:
 ---
 
 ## Notes
@@ -60,8 +60,8 @@ Creates note at `literature/literature.md`:
 
 ```
 ---
-title: 
-authors: 
+title:
+authors:
 ---
 
 ## Notes

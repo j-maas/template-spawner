@@ -39,14 +39,14 @@ export default class TemplateSpawnerPlugin extends Plugin {
 			},
 		});
 
-		this.addRibbonIcon('list-plus', "Create new note from template", () => {
+		this.addRibbonIcon("list-plus", "Create new note from template", () => {
 			this.startCreation();
-		})
+		});
 
 		this.addSettingTab(new TemplateSpawnerSettingTab(this.app, this));
 	}
 
-	onunload() { }
+	onunload() {}
 
 	async loadSettings() {
 		this.settings = Object.assign(
@@ -61,8 +61,12 @@ export default class TemplateSpawnerPlugin extends Plugin {
 	}
 
 	startCreation() {
-		const safeTemplateFolderPath = normalizePath(this.settings.templateFolder)
-		const templateFolder = this.app.vault.getFolderByPath(safeTemplateFolderPath);
+		const safeTemplateFolderPath = normalizePath(
+			this.settings.templateFolder,
+		);
+		const templateFolder = this.app.vault.getFolderByPath(
+			safeTemplateFolderPath,
+		);
 		if (templateFolder === null) {
 			new Notice(
 				`Could not find the template folder at ${safeTemplateFolderPath}. Please update the settings.`,
@@ -103,7 +107,10 @@ export default class TemplateSpawnerPlugin extends Plugin {
 		const templateFrontmatter =
 			this.app.metadataCache.getFileCache(template)?.frontmatter;
 		const folder = this.getDestinationFolderPath(templateFrontmatter);
-		const basename = this.getDestinationBasename(templateFrontmatter, template.basename);
+		const basename = this.getDestinationBasename(
+			templateFrontmatter,
+			template.basename,
+		);
 
 		return { folder, basename };
 	}
@@ -119,8 +126,8 @@ export default class TemplateSpawnerPlugin extends Plugin {
 		const destinationFolderPath =
 			frontmatterDestinationFolder !== null
 				? frontmatterDestinationFolder
-					.split("/")
-					.filter((part) => part.trim().length !== 0)
+						.split("/")
+						.filter((part) => part.trim().length !== 0)
 				: [];
 
 		return destinationFolderPath;
@@ -128,16 +135,16 @@ export default class TemplateSpawnerPlugin extends Plugin {
 
 	getDestinationBasename(
 		templateFrontmatter: FrontMatterCache | undefined,
-		templateBasename: string
+		templateBasename: string,
 	): string {
 		const frontmatterBasename: string | null = parseFrontMatterEntry(
 			templateFrontmatter,
 			TemplateSpawnerPlugin.destinationNameKey,
 		);
 
-		let destinationBasename = templateBasename
+		let destinationBasename = templateBasename;
 		if (frontmatterBasename !== null) {
-			destinationBasename = frontmatterBasename
+			destinationBasename = frontmatterBasename;
 		}
 
 		const currentDate = moment();
@@ -170,20 +177,24 @@ export default class TemplateSpawnerPlugin extends Plugin {
 			if (result instanceof TFile) {
 				return result;
 			} else {
-				if (result.message.includes("File name cannot contain any of the following characters")) {
-					const errorMessage = `The file name '${basename}' is invalid: ${result.message}`
-					new Notice(errorMessage)
-					throw new Error(errorMessage)
+				if (
+					result.message.includes(
+						"File name cannot contain any of the following characters",
+					)
+				) {
+					const errorMessage = `The file name '${basename}' is invalid: ${result.message}`;
+					new Notice(errorMessage);
+					throw new Error(errorMessage);
 				}
 			}
 
-			basename = this.incrementBasename(basename)
+			basename = this.incrementBasename(basename);
 
 			triesLeft -= 1;
 		}
-		const errorMessage = `There are too many existing files with confliting names. Abandoned after ${maxTries} tries, last try was: ${folder.join("/")}/${basename}`
-		new Notice(errorMessage)
-		throw new Error(errorMessage)
+		const errorMessage = `There are too many existing files with confliting names. Abandoned after ${maxTries} tries, last try was: ${folder.join("/")}/${basename}`;
+		new Notice(errorMessage);
+		throw new Error(errorMessage);
 	}
 
 	async tryCreatingFile(
@@ -191,7 +202,10 @@ export default class TemplateSpawnerPlugin extends Plugin {
 		content: string,
 	): Promise<TFile | Error> {
 		try {
-			return await this.app.vault.create(this.normalizePath(path), content);
+			return await this.app.vault.create(
+				this.normalizePath(path),
+				content,
+			);
 		} catch (e) {
 			if (e instanceof Error) {
 				return e;
@@ -211,7 +225,7 @@ export default class TemplateSpawnerPlugin extends Plugin {
 			const prefix = match[1];
 			return prefix + newNumber;
 		} else {
-			return basename.trimEnd() + " 2"
+			return basename.trimEnd() + " 2";
 		}
 	}
 
@@ -220,24 +234,25 @@ export default class TemplateSpawnerPlugin extends Plugin {
 			newFile,
 			(frontmatter) => {
 				delete frontmatter[TemplateSpawnerPlugin.destinationFolderKey];
-				delete frontmatter[TemplateSpawnerPlugin.destinationNameKey]
+				delete frontmatter[TemplateSpawnerPlugin.destinationNameKey];
 			},
 		);
 	}
 
 	async afterCreation(newFile: TFile) {
 		if (this.settings.afterCreation === "nothing") {
-			new Notice(`Created '${newFile.path}'.`)
-			return
+			new Notice(`Created '${newFile.path}'.`);
+			return;
 		}
 
-		const leafType = this.settings.afterCreation === "openInNew" ? "tab" : false;
+		const leafType =
+			this.settings.afterCreation === "openInNew" ? "tab" : false;
 		const leaf = this.app.workspace.getLeaf(leafType);
 		await leaf.openFile(newFile);
 	}
 
 	normalizePath(path: string[]): string {
-		return normalizePath(path.join("/"))
+		return normalizePath(path.join("/"));
 	}
 }
 
@@ -297,19 +312,21 @@ class TemplateSpawnerSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-			.setName('After creation')
-			.setDesc('Choose what to do with new notes after they were created.')
+			.setName("After creation")
+			.setDesc(
+				"Choose what to do with new notes after they were created.",
+			)
 			.addDropdown((dropdown) =>
 				dropdown
-					.addOption('openInNew', 'Open in new tab')
-					.addOption('openInActive', 'Open in active editor')
-					.addOption('nothing', "Don't open, only notify")
+					.addOption("openInNew", "Open in new tab")
+					.addOption("openInActive", "Open in active editor")
+					.addOption("nothing", "Don't open, only notify")
 					.setValue(this.plugin.settings.afterCreation)
 					.onChange(async (value) => {
 						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						this.plugin.settings.afterCreation = value as any;
 						await this.plugin.saveSettings();
-					})
+					}),
 			);
 	}
 }
