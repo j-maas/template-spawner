@@ -90,7 +90,7 @@ export default class TemplateSpawnerPlugin extends Plugin {
 
 	async createNewFromTemplate(template: TFile) {
 		const destination = await this.getDestination(template);
-		const templateContent = await this.app.vault.read(template);
+		const templateContent = await this.app.vault.cachedRead(template);
 
 		const newFile = await this.createFile(
 			destination.folder,
