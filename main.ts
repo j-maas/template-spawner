@@ -11,6 +11,7 @@ import {
 	FrontMatterCache,
 	normalizePath,
 } from "obsidian";
+import { FolderSuggest } from "src/folderSuggest";
 
 interface TemplateSpawnerSettings {
 	templateFolder: string;
@@ -304,14 +305,16 @@ class TemplateSpawnerSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("Template folder")
 			.setDesc("Path to the folder containing your templates.")
-			.addText((text) =>
-				text
+			.addSearch((search) => {
+				new FolderSuggest(this.app, search.inputEl);
+
+				search
 					.setValue(this.plugin.settings.templateFolder)
 					.onChange(async (value) => {
 						this.plugin.settings.templateFolder = value;
 						await this.plugin.saveSettings();
-					}),
-			);
+					});
+			});
 
 		new Setting(containerEl)
 			.setName("After creation")
