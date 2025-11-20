@@ -91,6 +91,13 @@ export default class TemplateSpawnerPlugin extends Plugin {
 
 	async createNewFromTemplate(template: TFile) {
 		const destination = this.getDestination(template);
+
+		if (!destination.found) {
+			const errorMessage = `Could not find folder '${destination.path.join("/")}' to create file.`;
+			new Notice(errorMessage);
+			throw new Error(errorMessage);
+		}
+
 		const templateContent = await this.app.vault.cachedRead(template);
 
 		const newFile = await this.createFile(
@@ -104,16 +111,27 @@ export default class TemplateSpawnerPlugin extends Plugin {
 		await this.afterCreation(newFile);
 	}
 
-	getDestination(template: TFile): { folder: string[]; basename: string } {
+	getDestination(
+		template: TFile,
+	):
+		| { folder: string[]; basename: string; found: true }
+		| { found: false; path: string[] } {
 		const templateFrontmatter =
 			this.app.metadataCache.getFileCache(template)?.frontmatter;
 		const folder = this.getDestinationFolderPath(templateFrontmatter);
+
+		// Check whether folder exists.
+		const foundFolder = this.app.vault.getFolderByPath(folder.join("/"));
+		if (foundFolder === null) {
+			return { found: false, path: folder };
+		}
+
 		const basename = this.getDestinationBasename(
 			templateFrontmatter,
 			template.basename,
 		);
 
-		return { folder, basename };
+		return { folder, basename, found: true };
 	}
 
 	getDestinationFolderPath(
