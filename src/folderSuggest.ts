@@ -43,7 +43,7 @@ export class FolderSuggest extends AbstractInputSuggest<Suggestion> {
 
 	renderSuggestion(suggestion: Suggestion, el: HTMLElement): void {
 		const match = document.createElement("span");
-		match.style.fontWeight = "bold";
+		match.classList.add("match");
 		match.setText(suggestion.match);
 
 		const children = [suggestion.before, match, suggestion.after].filter(

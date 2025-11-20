@@ -80,9 +80,9 @@ export default class TemplateSpawnerPlugin extends Plugin {
 		const allTemplates = templateFolder.children.filter(
 			(entry): entry is TFile => entry instanceof TFile,
 		);
-		new TemplateChooserModal(this.app, allTemplates, (template) =>
-			this.onTemplateSelected(template),
-		).open();
+		new TemplateChooserModal(this.app, allTemplates, (template) => {
+			this.onTemplateSelected(template);
+		}).open();
 	}
 
 	async onTemplateSelected(template: TFile) {
@@ -90,7 +90,7 @@ export default class TemplateSpawnerPlugin extends Plugin {
 	}
 
 	async createNewFromTemplate(template: TFile) {
-		const destination = await this.getDestination(template);
+		const destination = this.getDestination(template);
 		const templateContent = await this.app.vault.cachedRead(template);
 
 		const newFile = await this.createFile(
@@ -104,9 +104,7 @@ export default class TemplateSpawnerPlugin extends Plugin {
 		await this.afterCreation(newFile);
 	}
 
-	async getDestination(
-		template: TFile,
-	): Promise<{ folder: string[]; basename: string }> {
+	getDestination(template: TFile): { folder: string[]; basename: string } {
 		const templateFrontmatter =
 			this.app.metadataCache.getFileCache(template)?.frontmatter;
 		const folder = this.getDestinationFolderPath(templateFrontmatter);
