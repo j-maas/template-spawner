@@ -80,8 +80,8 @@ export default class TemplateSpawnerPlugin extends Plugin {
 		const allTemplates = templateFolder.children.filter(
 			(entry): entry is TFile => entry instanceof TFile,
 		);
-		new TemplateChooserModal(this.app, allTemplates, (template) => {
-			this.onTemplateSelected(template);
+		new TemplateChooserModal(this.app, allTemplates, async (template) => {
+			await this.onTemplateSelected(template);
 		}).open();
 	}
 
